@@ -52,7 +52,7 @@ volume_contour <- function(input, res.out = 10, levels = c(95,75,25,50),reclassi
   plot(vcs,add=T)
   
   #convert to polygons - at the moment conversion to 'Spatial' class fails when there are multiple polygons in a level using st_polygonize 
-  #or when there is only one polygon in a level using st_cast so adopting a 'try' approach instead until can resolve
+  #or when there is only one polygon in a level using st_cast so adopting a 'try' approach instead until this issue is resolved
   vcpolys = try(st_as_sf(vcs) %>% st_cast('POLYGON') %>% as('Spatial'),silent=TRUE) 
   if(class(vcpolys) == "try-error") vcpolys = st_as_sf(vcs) %>% st_polygonize() %>% as('Spatial')
   vcpolys = rgeos::createSPComment(vcpolys)
@@ -123,7 +123,6 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
   if (weight == T){
     
     counts = sapply(Z,length)  
-    #counts = sapply(gpe3_files,FUN = function(x){length(ncvar_get(nc_open(x),'twelve_hour_timestamps'))})
     q = ceiling(quantile(counts,percentile))
     nbyday = sapply(seq(max(counts)),FUN = function(x){length(counts[counts>=x])})
     weights = c(1/nbyday[1:q],rep(1,length(nbyday) - q))
@@ -153,53 +152,6 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
   
   return(volume_contour(population_average, ...))
   
-  
-}
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# gpe3_track
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# returns trackpoints from GPE3 output as a SpatialPointsaDataFrame
-
-# input is a directory containing GPE3 files. It assumes that deployment and release
-# metadata have been entered on portal
-
-gpe3_track = function(dir,model_only=FALSE){
-  
-  gpe3 = list.files(dir,full.names=TRUE,pattern = "\\GPE3.csv$") 
-  
-  if (length(gpe3) == 1L){
-    
-    gpe3 = read.csv(gpe3,skip=5,header=T,stringsAsFactors=FALSE)
-    
-    gpe3 = gpe3[,2:6]
-    
-    names(gpe3) = c("ptt","datetime","latitude","longitude","type")
-    
-    gpe3$datetime = as.POSIXct(gpe3$datetime,format = "%d-%b-%Y %H:%M:%S",tz="GMT")
-    
-    gpe3 = gpe3[order(gpe3$datetime),]
-    
-    usr = which(gpe3$type == "User")
-    
-    gpe3$type[usr[1L]] = "deployment"; gpe3$type[usr[length(usr)]] = "release"
-    
-    gpe3$type = gsub("Light - ","",gpe3$type)
-    gpe3$type = tolower(gpe3$type)
-    
-    if(model_only) gpe3 = dplyr::filter(gpe3,type=='none')
-    
-    coordinates(gpe3) = ~longitude+latitude
-    proj4string(gpe3) = CRS("+proj=longlat")
-    
-    return(gpe3)
-    
-  } else {
-    
-    return(NULL)
-    
-  }
   
 }
 
@@ -293,7 +245,8 @@ gpe3_sim_track = function(gpe3_files,track_end,N=100){
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # gpe3_meta
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+# Fetch metadata from a vector of GPE3 files
+                         
 gpe3_meta = function(files){
 
 lapply(files,function(x){  
@@ -348,7 +301,6 @@ depth_profile = function(dir,n_tail){
 # same rate. For very long lags which may indicate the tag has been eaten(!) then the final
 # geolocation before the track ended is probably the best bet.
 
-
 release = function(dirs,landmask=NULL,interactive=F,truncate_hrs,n_tail=50,drift_correction){
 
 require(sp); require(rgeos); require(trip); require(lubridate)
@@ -357,7 +309,7 @@ result=list()
   
 for(d in seq(dirs)){  
     
-summary = list.files(dirs[d],full.names=TRUE,pattern = "\\Summary.csv$") %>% read.csv() %>% dplyr::filter(!is.na(Ptt)) #somtimes summary table contains weird first row with no deployment data
+summary = list.files(dirs[d],full.names=TRUE,pattern = "\\Summary.csv$") %>% read.csv() %>% dplyr::filter(!is.na(Ptt)) #somtimes summary table containsfirst row with no deployment data
 argos = list.files(dirs[d],full.names=TRUE,pattern = "\\-Argos.csv$") %>% read.csv()
 
 if(dim(summary)[1]>1) stop (paste('summary.csv for',dirs[d],'has more than 1 row!'))
@@ -446,7 +398,7 @@ if(!missing(drift_correction)){
   
   corrected_release = drift_correct(track_end,argos,N=drift_correction)
   
-  
+ 
   result[[d]] = cbind(result[[d]],corrected_release)
 
 
@@ -515,41 +467,6 @@ drift_correct = function(track_end,argos,N=24){
   
   }
 
-
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ML_track
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# This function is a wrapper for probability_surface that calculates maximum likelihood locations
-# and 95% confidence envelopes for each 12 hourly likelihood surface in .nc files produced by 
-# GPE3 and then combines these to produce maxiumum likelihood tracks and accociated errors.
-
-ML_track = function(input){
-
-likelihoods = stack(input,varname="twelve_hour_likelihoods")
-
-locations = data.frame(x=NA,y=NA)
-errors=list()
-
-for(i in 1:nlayers(likelihoods)){
-  
-  ps = probability_surface(likelihoods[[i]],probs=95)
-  
-  locations[i,]= xyFromCell(ps[[1]],which.max(values(ps[[1]])))
-  
-  errors[[i]] = spChFIDs(ps[[3]],as.character(i))
-  
-}
-
-locations    = SpatialPoints(locations,proj4string=CRS("+proj=longlat + datum=WGS84"))
-ML_track     = points_to_line(locations)
-CI95         = gUnaryUnion(do.call("rbind",errors))
-
-return(list(locations,ML_track,CI95))
-
-}
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # gpe3_spot_locs
@@ -634,147 +551,3 @@ read_spot = function(dirs){
   
   
 }
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# probability_surface:    Fits probability envelopes to likelihood surfaces derived from 
-#                          wildlife computers GPE3 netcdf outputs
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 
-#   Dependencies: raster, sp, maptools, rgdal, plotKML plus custom functions
-#
-#   'input' is a raster layer containing location likelihoods from GPE3 (either a single
-#     layer or a merged layer for an individual animal or population)
-#
-#   'resolution' is the resolution of the output raster on which the likelihood areas are estimated
-#   expressed as a multiple of the input raster resoultion. e.g. to keep output resolution the same 
-#   (default for GPE 3 = 0.25 degrees), use 1. To resample output onto a 0.025 degree grid for smoother
-#   envelopes use 10.
-#
-#   'probs' is a numeric vector containing the probability levels to estimate in the output. e.g. to estimate
-#   95%,75% and 50% likelihood areas use c(95,75,50).
-#
-#   'output.file' Optional: a string containing a filename to output results to. Two files will be written: 
-#   a GeoTiff file containing the resampled probability surface and a KML file containing the likelihood
-#   area polygons and contours
-#
-#   returns a list with 3 layers:
-#
-#   [[1]] is an object of class raster containing the resampled likelihood surface used in the analysis.
-#         Values are residency likelihoods for individual cells.
-#
-#   [[2]] is an object of class SpatialLinesDataFrame containing contours for each of the specified probability
-#         levels
-#
-#   [[3]] is an object of class SpatialPolygonsDataFrame containing likelihood areas at each f the specified probability
-#         levels
-
-
-probability_surface<-function(input, resolution = 10, probs = c(99,95,50), output.file=NULL){
-  
-  canvas<-raster(nrow=dim(input)[1]*resolution,ncol=dim(input)[2]*resolution,ext=extent(input))
-  HR<-resample(x=input,y=canvas,method="bilinear") #resample
-  HR@data@values<-HR@data@values/sum(HR@data@values,na.rm=T) # normalise so all values sum to 1
-  
-  probs<-sort(probs,decreasing = T) #sort the input probabilities
-  RasterVals<-sort(HR@data@values) #sort the raster probability values
-  Raster.breaks <- sort(c(tapply(1-(probs/100),probs,
-                                 FUN = function(x){RasterVals[max(which(cumsum(RasterVals)<=x))]}),1))
-  RasterCols<- rev(heat.colors(length(probs)))
-  plot(HR,col=RasterCols,breaks=Raster.breaks,legend = F,xlab="X",ylab="Y",bg=400)
-  legend("topright",legend = paste(probs,"%",sep=" "),fill = RasterCols)
-  
-  #Add contour lines
-  contours<-rasterToContour(HR,levels = Raster.breaks[1:length(probs)])
-  contours@data$level<-signif(as.numeric(as.character(contours@data$level)),2)
-  contours@data$likelihood<-probs
-  plot(contours,add=T)
-  
-  #Convert to polygons (custom function)
-  
-  polys<-lines2polys(contours)
-  polys<-createSPComment(polys) #Needed for postgis export
-  polys$area = polys$area/1000000; names(polys)[3] = "area_km2"
-  
-if(!is.null(output.file)){
-  
-  drop.ext<-function(x){sub("^([^.]*).*", "\\1", x)}
-  
-  output.kml<-paste(drop.ext(output.file),".kml",sep="")
-  writeOGR(polys, output.kml,"Likelihood Contours", driver = "KML")
-  kml_open(output.kml)
-  kml_layer(KML_line_IDs(contours),"Likelihood Contours") #KML_line_IDs is a custom function to ensure all parts of multiline features are exported, not just first in set (bug in plotKML)
-  kml_layer(polys,"Likelihood Areas")
-  kml_close(output.kml)
-        
-  writeRaster(HR,drop.ext(output.file),format = "GTiff")
-   
-}
-  #return outputs as a list
-  return(list(HR,contours,polys))
-   
-}
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# pop_residency:        Estimates mean residency likelihoods for a population of animals over a 
-#                       depolyment period
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# This function is a wrapper for probability_surface above.The function first calculates the 
-# mean 12 hour residency likelihoods for the population in each cell on a standard grid, and 
-# then extracts and plots the specified probability envelopes using probability_surface.
-#
-# 'population_set' is a vector containing file paths to the GPE3.nc files for a collection of animals.
-#  If length of population_set = 1, the residency surface for a single animal will be returned.Parameter
-#  'weight' is meaningless in this situation as all measurements are weights as 1.
-#
-# 'weight' is a logical input indicating whether or not to use a weighted average for calculating
-# mean residency. If weight = T, each 12 hourly-likelihood surface is multiplied by the inverse of
-# the number of individuals that had a measurement at this relative timepoint in their track.
-# This effectively implements the method of Block et al.2011 and ensures that residency is not excessively
-# influenced by large numbers of short term deployments close to the release site.
-#
-# Other parameters are those passed to function probability_surface .....
-
-pop_residency<-function(population_set, weight=F, ...){
-  
-  if (weight == T){
-    
-    counts<-tapply(population_set,population_set,
-                   FUN = function(x){length(ncvar_get(nc_open(x),'twelve_hour_timestamps'))})
-    
-    weights<-as.numeric(1/tapply(seq(1:max(counts)),seq(1:max(counts)), 
-                                 FUN = function(x){length(counts[counts>=x])}))
-    
-  }
-  
-  output<-list()
-  for(i in 1:length(population_set)){
-    likelihoods<-stack(population_set[i],varname = "twelve_hour_likelihoods")
-    if (weight == T) likelihoods<-likelihoods*(weights[1:dim(likelihoods)[3]])
-    av_likelihoods<-overlay(likelihoods,fun=mean)
-    output[[i]]<-av_likelihoods
-  }
-  
-  boundaries<-extent(c(min(do.call("cbind",lapply(output,FUN = function(x){extent(x)@xmin}))),
-                       max(do.call("cbind",lapply(output,FUN = function(x){extent(x)@xmax}))),
-                       min(do.call("cbind",lapply(output,FUN = function(x){extent(x)@ymin}))),
-                       max(do.call("cbind",lapply(output,FUN = function(x){extent(x)@ymax})))))
-  
-  output<-lapply(output,FUN = function(x){extend(x,boundaries)})
-  output<-lapply(output,FUN = function(y){y[is.na(y)]=0; return(y)})
-  
-  population_average<-overlay(do.call("stack",output),fun=mean) 
-    
-  return(probability_surface(population_average, ...))
-  
-  
-  
-}
-
-
-
-
