@@ -283,6 +283,35 @@ depth_profile = function(dir,n_tail){
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# depth_profile
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# A function for plotting depth and temperature series data - the function allows user
+# to interactively select a directory and then plots all series files within it in sequence
+
+plot_series = function(){
+dir = choose.dir()
+f = list.files(dir,pattern = '*-Series.csv$',full.names = TRUE,recursive = TRUE) 
+
+map(f, function(.x){
+series = read.csv(.x) 
+title = unique(series$Ptt) 
+
+series = mutate(series, datetime = lubridate::dmy_hms(paste(Day,Time))) %>%
+         dplyr::select(datetime,Temperature,Depth) %>%
+         mutate(Depth = Depth * -1) %>%
+         pivot_longer(cols = c(Temperature,Depth), names_to = 'variable')
+ 
+ggplot(series,aes(x = datetime, y = value)) +
+  geom_point(aes(colour = variable)) +
+  facet_wrap(~variable,ncol=1,scales = 'free_y') + 
+  labs(title = title)
+})
+
+}
+                         
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # release
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
