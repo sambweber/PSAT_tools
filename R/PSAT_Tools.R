@@ -53,14 +53,15 @@ volume_contour <- function(input, res.out = 10, levels = c(95,75,25,50),reclassi
   
   #convert to polygons - at the moment conversion to 'Spatial' class fails when there are multiple polygons in a level using st_polygonize 
   #or when there is only one polygon in a level using st_cast so adopting a 'try' approach instead until this issue is resolved
-  vcpolys = try(st_as_sf(vcs) %>% st_cast('POLYGON') %>% as('Spatial'),silent=TRUE) 
-  if(class(vcpolys) == "try-error") vcpolys = st_as_sf(vcs) %>% st_polygonize() %>% as('Spatial')
-  vcpolys = rgeos::createSPComment(vcpolys)
+  #vcpolys = try(st_as_sf(vcs) %>% st_cast('POLYGON') %>% as('Spatial'),silent=TRUE) 
+  #if(class(vcpolys) == "try-error") vcpolys = st_as_sf(vcs) %>% st_polygonize() %>% as('Spatial')
+  #vcpolys = rgeos::createSPComment(vcpolys)
+  vcpolys = st_as_sf(vcs) %>% st_cast('POLYGON')
   
   #calculate area using Lambert Azimuthal Equal Area projection
-  centroid = coordinates(gCentroid(vcpolys))
-  lamberts = sp::CRS(paste0("+proj=laea +lat_0=",centroid[2],"+lon_0=",centroid[1]))
-  vcpolys$area_km2 = round(gArea(spTransform(vcpolys,lamberts),byid=T)/1000000,1)
+  centroid = st_coordinates(st_centroid(vcpolys))
+  lamberts = paste0("+proj=laea +lon_0=",centroid[1,1]," +lat_0=",centroid[1,2])
+  vcpolys$area_km2 = as.numeric(round(st_area(st_transform(vcpolys,lamberts))/1000000,1))
   
   #reclassify raster by levels
   if(reclassify){
