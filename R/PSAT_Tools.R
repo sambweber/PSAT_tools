@@ -362,7 +362,11 @@ argos$Date = parse_date_time(argos$Date,orders = c("HMS dbY","dmY HM"),tz='GMT')
 #proj4string(argos) = CRS("+proj=longlat")
 argos = st_as_sf(argos,coords = c('Longitude','Latitude'), crs=4326)
 
-if(!is.null(landmask)){argos <- argos[!st_intersects(argos,land,sparse=F)[,1],]}
+if(!is.null(landmask)){
+  land = st_make_valid(land)
+  argos <- argos[!st_intersects(argos,land,sparse=F)[,1],]
+}
+  
 argos <- trip::forceCompliance(as(argos,'Spatial'),c("Date","Ptt"))
 argos <- argos[speedfilter(argos,max.speed=3.5),]
 argos <- as(argos,'SpatialPointsDataFrame') %>% st_as_sf()
