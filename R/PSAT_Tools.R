@@ -332,7 +332,7 @@ ggplot(series,aes(x = datetime, y = value)) +
 
 release = function(dirs,landmask=NULL,interactive=F,truncate_hrs,n_tail=50,drift_correction){
 
-require(sp); require(rgeos); require(trip); require(lubridate)
+require(sf); require(trip); require(lubridate)
 
 result=list()  
   
