@@ -358,13 +358,14 @@ argos$Date = parse_date_time(argos$Date,orders = c("HMS dbY","dmY HM"),tz='GMT')
 
 
 # Filter out argos locations that are on land, low quality or have unrealistic drift speeds
-coordinates(argos) = ~Longitude + Latitude
-proj4string(argos) = CRS("+proj=longlat")
+#coordinates(argos) = ~Longitude + Latitude
+#proj4string(argos) = CRS("+proj=longlat")
+argos = st_as_sf(argos,coords = c('Longitude','Latitude'), crs=4326)
 
-if(!is.null(landmask)){argos <- argos[!gIntersects(landmask,argos,byid=T)[,1],]}
-argos <- forceCompliance(argos,c("Date","Ptt"))
+if(!is.null(landmask)){argos <- argos[!st_intersects(argos,land,sparse=F)[,1],]}
+argos <- trip::forceCompliance(as(argos,'Spatial'),c("Date","Ptt"))
 argos <- argos[speedfilter(argos,max.speed=3.5),]
-argos <- as(argos,'SpatialPointsDataFrame')
+argos <- as(argos,'SpatialPointsDataFrame') %>% st_as_sf()
 argos <- argos[argos$LocationQuality %in% c("A","1","2","3"),]
 
 # Find release time
