@@ -395,14 +395,14 @@ release - 3600 * truncate_hrs, release
 if(interactive){
   
   tryCatch(
-    {depth_profile(dirs[d],n_tail = n_tail)
+    {dev.new(); depth_profile(dirs[d],n_tail = n_tail)
      abline(v=release,col='blue')
      abline(v=track_end,col='red')
      
      happy <- readline("Accept track end (Y or N)?") 
     
      while(happy == 'N'){
-       depth_profile(dirs[d],n_tail = n_tail)
+       dev.new(); depth_profile(dirs[d],n_tail = n_tail)
        abline(v=release,col='blue')
        print('Select the track end from the series')
        track_end = locator(1)$x
