@@ -29,7 +29,7 @@
 #' @return Returns a three element list containing the resampled \code{Raster} and a \code{SpatialLinesDataFrame} and \code{SpatialPolygonsDataFrame}
 #' for the volume contours.
 
-volume_contour <- function(input, res.out = 10, levels = c(95,75,25,50),reclassify = T){
+volume_contour <- function(input, res.out = 10, levels = c(95,75,50,25),reclassify = T){
   
   require(raster); require(rgdal); require(sf); require(rgeos)
   
