@@ -169,7 +169,7 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
 # If model_only = TRUE only the 12 hourly modelled locations from GPE3 are returned (not SST and light positions)
 # If combine = TRUE, data from all individuals are combined into a single sf table
 
-gpe3_track_sf = function(dirs,model_only=FALSE,combine=FALSE,include_endpoints = TRUE){
+gpe3_track_sf = function(dirs,model_only=FALSE,combine=FALSE,include_endpoints = TRUE,geom = 'point'){
   
   result = lapply(dirs,function(dir){
   
@@ -190,8 +190,12 @@ gpe3_track_sf = function(dirs,model_only=FALSE,combine=FALSE,include_endpoints =
     usr = which(gpe3$type == "user")
     gpe3$type[usr[1L]] = "deployment"; gpe3$type[usr[length(usr)]] = "release"
     
-    if(include_endpoints) return(gpe3) else return(subset(gpe3,!type %in% c('deployment','release')))
-    
+    if(!include_endpoints) gpe3 = subset(gpe3,!type %in% c('deployment','release'))
+
+    if(geom == 'line') gpe3 = group_by(gpe3,ptt) %>% summarise(do_union=F) %>% st_cast('LINESTRING')
+
+  return(gpe3)
+            
   } else {
     
     return(NULL)
