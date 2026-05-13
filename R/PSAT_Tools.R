@@ -216,8 +216,6 @@ gpe3_track_sf = function(dirs,model_only=FALSE,combine=FALSE,include_endpoints =
 
 gpe3_sim_track = function(gpe3_files,track_end,N=100){
   
-  source('SOFTWARE/R/custom_scripts/GridTools.R')
-  
   if (length(track_end) != length(gpe3_files)) {stop ("number of track end dates don't match number of files")} 
   
   output = list()
@@ -240,6 +238,26 @@ gpe3_sim_track = function(gpe3_files,track_end,N=100){
   }
   
   return(output)
+  
+}
+
+
+# sampleWeighted:
+# Extract a weighted random sample of points from raster. Number of points in cell is weighted
+# by cell value. r is a raster object, N is the number of pounts and sf is a logical indicating whether to return as a dataframe of coordinates (default) or an sf object.
+
+sampleWeighted <-function(r, N,sf=FALSE){
+  r[is.na(r)] = 0
+  r = as.list(r)
+  hs = res(r[[1]])/2
+  pts = lapply(r,function(x){
+  ptscell = sample(ncell(x), N, prob=x[], replace=TRUE)
+  centres = xyFromCell(x,ptscell)
+  cbind(runif(nrow(centres),centres[,1]-hs[1],centres[,1]+hs[1]),runif(nrow(centres),centres[,2]-hs[2],centres[,2]+hs[2]))
+  })
+  
+  if(sf) {return(lapply(pts,function(j) as.data.frame(j) %>% st_as_sf(coords=1:2,crs=crs(r[[1]]))))
+  } else {return(array(unlist(pts),dim=c(N,2,length(r))))}
   
 }
 
@@ -284,7 +302,7 @@ depth_profile = function(dir,n_tail){
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# depth_profile
+# plot_series
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # A function for plotting depth and temperature series data - the function allows user
