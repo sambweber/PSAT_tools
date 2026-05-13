@@ -149,7 +149,7 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
   
   output = lapply(output,FUN = function(x){extend(x,boundaries,value=0)})
   
-  population_average = overlay(do.call("stack",output),fun=mean) 
+  population_average = raster::overlay(do.call("stack",output),fun=mean) 
   
   return(volume_contour(population_average, ...))
   
