@@ -48,7 +48,7 @@ volume_contour <- function(input, res.out = 10, levels = c(95,75,50,25),reclassi
   
   #add contour lines
   vcs = raster::rasterToContour(resamp,levels = breaks[1:length(levels)],maxpixels = ncell(resamp))
-  vcs$level = vclevels
+  vcs$level = levels
   plot(vcs,add=T)
   
   #convert to polygons - at the moment conversion to 'Spatial' class fails when there are multiple polygons in a level using st_polygonize 
