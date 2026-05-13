@@ -136,7 +136,7 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
     
     likelihoods = raster::stack(gpe3_files[i],varname = "twelve_hour_likelihoods",bands=Z[[i]])
     if (weight == T) likelihoods = likelihoods*(weights[1:dim(likelihoods)[3]])
-    av_likelihoods = overlay(likelihoods,fun=mean)
+    av_likelihoods = raster::overlay(likelihoods,fun=mean)
     av_likelihoods[is.na(av_likelihoods)] = 0
     output[[i]] = av_likelihoods
     
