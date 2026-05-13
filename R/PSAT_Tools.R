@@ -47,7 +47,7 @@ volume_contour <- function(input, res.out = 10, levels = c(95,75,50,25),reclassi
   legend("topright",legend = paste(vclevels,"%",sep=" "),fill = cols)
   
   #add contour lines
-  vcs = rasterToContour(resamp,levels = breaks[1:length(levels)],maxpixels = ncell(resamp))
+  vcs = raster::rasterToContour(resamp,levels = breaks[1:length(levels)],maxpixels = ncell(resamp))
   vcs$level = levels
   plot(vcs,add=T)
   
@@ -65,7 +65,7 @@ volume_contour <- function(input, res.out = 10, levels = c(95,75,50,25),reclassi
   
   #reclassify raster by levels
   if(reclassify){
-  resamp = reclassify(resamp,matrix(c(min(rastvals),breaks[-length(breaks)],breaks,NA,vclevels),ncol=3),include.lowest=T)
+  resamp = raster::reclassify(resamp,matrix(c(min(rastvals),breaks[-length(breaks)],breaks,NA,vclevels),ncol=3),include.lowest=T)
   }
   
   #return outputs as a list
@@ -142,12 +142,12 @@ gpe_residency <- function(gpe3_files, track_end = NULL, weight=F,percentile=0.85
     
   }
   
-  boundaries <- extent(c(min(do.call("cbind",lapply(output,FUN = function(x){extent(x)@xmin}))),
-                         max(do.call("cbind",lapply(output,FUN = function(x){extent(x)@xmax}))),
-                         min(do.call("cbind",lapply(output,FUN = function(x){extent(x)@ymin}))),
-                         max(do.call("cbind",lapply(output,FUN = function(x){extent(x)@ymax})))))
+  boundaries <- raster::extent(c(min(do.call("cbind",lapply(output,FUN = function(x){raster::extent(x)@xmin}))),
+                         max(do.call("cbind",lapply(output,FUN = function(x){raster::extent(x)@xmax}))),
+                         min(do.call("cbind",lapply(output,FUN = function(x){raster::extent(x)@ymin}))),
+                         max(do.call("cbind",lapply(output,FUN = function(x){raster::extent(x)@ymax})))))
   
-  output = lapply(output,FUN = function(x){extend(x,boundaries,value=0)})
+  output = lapply(output,FUN = function(x){raster::extend(x,boundaries,value=0)})
   
   population_average = raster::overlay(do.call("stack",output),fun=mean) 
   
